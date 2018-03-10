@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: Template
+metadata:
+  name: cluster-create-template
+objects:
+
+- apiVersion: clusteroperator.openshift.io/v1alpha1
+  kind: Cluster
+  metadata:
+    name: ${CLUSTER_NAME}
+  spec:
+    clusterVersionRef:
+      namespace: cluster-operator
+      name: origin-v3-9
+    hardware:
+      aws:
+        accountSecret:
+          name: aws-credentials
+        sshSecret:
+          name: ssh-private-key
+        sshUser: centos
+        sslSecret:
+          name: ssl-cert
+        region: "us-east-1"
+        keyPairName: "libra"
+    defaultHardwareSpec:
+      aws:
+        instanceType: "m4.xlarge"
+    machineSets:
+    - name: master
+      nodeType: Master
+      size: 1
+    - name: infra
+      nodeType: Compute
+      infra: true
+      size: 1
+    - name: compute
+      nodeType: Compute
+      size: 2
+
+parameters:
+- name: CLUSTER_NAME
+  displayName: Cluster Name
+  description: The name to give to the Cluster created. If using real AWS, then this name should include your username so that resources created in AWS can be identified as yours.
+  value: cluster1
+  required: true

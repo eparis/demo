@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Template
+metadata:
+  name: cluster-create-template
+objects:
+- apiVersion: clusteroperator.openshift.io/v1alpha1
+  kind: ClusterVersion
+  metadata:
+    name: origin-v3-9
+    namespace: ${CLUSTER_VERSION_NS}
+  spec:
+    imageFormat: "openshift/origin-${component}:v3.9"
+    vmImages:
+      awsVMImages:
+        regionAMIs:
+        - region: us-east-1
+          ami: ami-833d37f9
+    deploymentType: origin
+    version: "v3.9.0"
+parameters:
+- name: CLUSTER_VERSION_NS
+  displayName: Cluster Version Namespace
+  description: Namespace where cluster verions should live
+  value: cluster-operator

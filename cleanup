@@ -1,0 +1,3 @@
+oc delete -n demo-project image --all
+oc delete -n demo-project oauthaccesstoken --all
+reboot

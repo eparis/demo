@@ -1,0 +1,172 @@
+Show the CO:
+************
+CleanUp:
+oc cluster down
+sudo rm -rf /var/lib/origin/etcd-data
+StartUp:
+oc cluster up --version=v3.9 --image=docker.io/openshift/origin --host-data-dir=/var/lib/origin/etcd-data
+oc login -u system:admin
+
+# deploy the co
+./deploy-devel.yaml
+
+# copy secrets from the CO to my namespace (BUG: not sure why they are needed in co at all
+oc get secret aws-credentials -n cluster-operator -o yaml | sed -E '/(namespace:|annotations|last-applied-configuration:|selfLink|uid:|resourceVersion:)/d' | oc apply -f -
+oc get secret ssh-private-key -n cluster-operator -o yaml | sed -E '/(namespace:|annotations|last-applied-configuration:|selfLink|uid:|resourceVersion:)/d' | oc apply -f -
+oc get secret ssl-cert -n cluster-operator -o yaml | sed -E '/(namespace:|annotations|last-applied-configuration:|selfLink|uid:|resourceVersion:)/d' | oc apply -f -
+
+# wait for CO to start aggregating
+while ! oc get cluster > /dev/null 2>&1 ; do echo not found; sleep 1; done
+
+# create a cluster version
+oc process -f clusterversion.yaml | oc apply -f -
+oc get clusterversion -n cluster-operator -o yaml
+
+# create a cluster
+oc process -f cluster.yaml -p CLUSTER_NAME=eparis-demo1 | oc apply -f -
+oc get cluster eparis-demo-cluster -o yaml
+
+
+
+Jenkins to deploy to production, we'll come back to this.
+***************************
+
+click: Overview
+click: Jenkins
+click: Next
+click: create a secret
+click: overview
+Watch the DC, not the 'provisioned service'
+
+------
+Stand up a basic python app:
+
+http://eparis-cluster-master-external-1642054420.us-east-1.elb.amazonaws.com
+
+click: Python
+next
+demo-project
+Demo Project
+my-python-app
+https://github.com/eparis/demo.git
+click: create
+click: continue to project overview
+
+watch it fail:
+click: View Log
+
+Fix It Via Env Var:
+----------------
+Applications->Deployment
+my-python-app
+Environtment
+APP_FILE    fail.py
+
+App Works!
+http://my-python-app-demo-project.eparis-other-infra-1908944733.us-east-1.elb.amazonaws.com/
+
+Show Routes Switched to TLS
+-------------------
+click Route: "my-python-app"
+Show the edit dropdown.
+click TLS is not enabled.: "edit" this route
+check: Secure route
+
+App Works!
+https://my-python-app-demo-project.eparis-other-infra-1908944733.us-east-1.elb.amazonaws.com/
+http://my-python-app-demo-project.eparis-other-infra-1908944733.us-east-1.elb.amazonaws.com/
+
+Show the router can handle Ingress:
+https://github.com/knobunc/openshift-docs/blob/8f798d4deba76056fc46fd64a8256f597ab1b325/architecture/topics/haproxy_template_router.adoc#ingress-objects
+
+Break App Again:
+----------------
+my-python-app
+Evironment
+x to delete the env var
+save
+overview
+
+Fix It Via Code:
+----------------
+git mv fail.py app.py && git commit -m 'move to where it belongs'
+git push origin
+
+Click: Builds->Builds
+click: my-python-app
+click: Start Build
+click: Overview
+click: Expand
+
+App Works!
+https://my-python-app-demo-project.eparis-other-infra-1908944733.us-east-1.elb.amazonaws.com/
+
+That was annoying, trigger builds automatically:
+-----------------------------------------------
+click: Builds->Builds
+click: my-python-app
+click: Configuration
+click: copy github webhook
+
+https://github.com/eparis/demo/settings/hooks/new
+paste the webhook
+application/json
+redhat11
+Disable SSL verification
+
+click: Resources->Secrets
+click: Create Secret
+Secret Type: Webhook Secret
+my-python-webhook
+redhat11
+click: Create
+
+click: Overview
+
+sed -i 's/hi!/hi you guys!/' pythonapp/myserver.py && git commit -a -m 'made a code change'
+git push origin
+
+Flip back to overview
+watch it go!
+
+App Works With New String:
+https://my-python-app-demo-project.eparis-other-infra-1908944733.us-east-1.elb.amazonaws.com/
+
+
+Load a template for production:
+***********************************************
+Show Template:
+Copy Template In:
+Save The Template:
+Create:
+Expand the DC:
+Show the route is dead:
+
+Configure jenkins to push to prod:
+*********************************
+Go to jenkins
+Log in
+Click: "OpenShift Sample"
+Click: "Configure"
+search replace: all frontend and such with my-python-app or my-python-app-prod
+Click: Save
+Click: "Build Now"
+Click: "#1"
+Click: "Console Output"
+
+Update the dev version:
+**********************
+sed -i 's/hi you guys!/BROKED!/' pythonapp/myserver.py && git commit -a -m 'made a code change'
+git push origin
+
+Show dev is borked, but prod is still ok, guys.
+
+
+Show this really is kube:
+*************************
+curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl && chmod +x kubectl
+Copy the oc login command
+./kubectl get pod
+./kubectl get secret
+./kubectl get deployment
+./kubectl get deploymentconfig

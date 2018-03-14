@@ -31,6 +31,8 @@ oc get cluster eparis-demo-cluster -o yaml
 Jenkins to deploy to production, we'll come back to this.
 ***************************
 
+http://eparis-cluster-master-external-1642054420.us-east-1.elb.amazonaws.com
+
 click: Overview
 click: Jenkins
 click: Next
@@ -41,7 +43,6 @@ Watch the DC, not the 'provisioned service'
 ------
 Stand up a basic python app:
 
-http://eparis-cluster-master-external-1642054420.us-east-1.elb.amazonaws.com
 
 click: Python
 next
